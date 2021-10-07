@@ -5,6 +5,7 @@
 
 int N0 = 6;
 
+//---------------------functions----------------------------
 int factorial(int n) {
 	int a = 1;
 	for (int i = 1; i <= n; i++) {
@@ -31,6 +32,9 @@ int sign(double x) {
 	else return 0;
 }
 
+//--------------------------------------------
+
+
 
 class Polynomial {
 
@@ -38,7 +42,7 @@ public:
 
 	std::vector<double> coef;///coefs
 
-	int N;
+	int N;//power of polynome (6)
 
 	double B;//max 0 - n-1
 	double A;//max 1 - n
@@ -46,9 +50,10 @@ public:
 	double a;//lower bound
 	double b;//upper bound
 
-	int negative;
-	int positive;
+	int negative;//number of negative roots
+	int positive;//number of positive roots
 
+	std::vector<std::vector<double>> intervals;
 
 public:
 
@@ -61,10 +66,11 @@ public:
 
 		this->get_A_B();
 		this->get_a_b();
-
-		std::cout << "---------- polynomial constructed -------------" << std::endl;
+		//is->get_number_of_roots();
+		//std::cout << "---------- polynomial constructed -------------" << std::endl;
 	}
 
+	//returns the value of polynomial at given x
 	double get_value(double x) {
 		double value = 0;
 		for (int i = 0; i < N + 1; i++) {
@@ -73,6 +79,7 @@ public:
 		return value;
 	}
 
+	//prints the polynomial
 	void print() {
 
 		std::cout << "f(x) = ";
@@ -84,8 +91,7 @@ public:
 		//--------
 	
 	}
-
-
+		
 	void get_A_B() {//some max values of coefs
 
 		B = coef[0];
@@ -113,15 +119,10 @@ public:
 		b = 1 + A / abs(coef[0]);
 	}
 
-	void get_number_of_roots() {
-		Row r = Row(*this);
-
-		int negative = r.get_number(-p.b) - r.get_number(-p.a);
-		int positive = -r.get_number(p.b) + r.get_number(p.a);
-	}
+	
 };
 
-auto get_derivative(Polynomial& poly, int n) {//returns Polynomial which is 
+auto get_derivative(Polynomial& poly, int n) {//returns Polynomial which is a derivativ of n order
 
 	std::vector<double> array_(poly.N + 1 - n);
 
@@ -145,7 +146,7 @@ public:
 	std::vector< Polynomial > functions;
 	
 	int N;
-
+	
 	Row(Polynomial& poly_) {
 
 		poly = &poly_;
@@ -153,14 +154,14 @@ public:
 		for (int i = 0; i < poly->N +1; i++) {
 
 			functions.push_back(get_derivative(*poly, i));
-			std::cout << i << std::endl;
-			functions[i].print();
+			//std::cout << i << std::endl;
+			//functions[i].print();
 			
 		}
 
 	}
 
-	int get_number(double x) {//return number of sign changes for given x
+	int get_number_of_sign_changes(double x) {//return number of sign changes for given x
 
 		int n = 0;
 		std::vector<double> values;
@@ -183,10 +184,97 @@ public:
 		return n;
 	}
 
+};
 
-	void rough_localize() {
 
+
+//passes to polynomial a number of positive and negative roots it has
+void get_number_of_roots(Polynomial & p){
+
+	Row r = Row(p);
+	p.negative = r.get_number_of_sign_changes(-p.b) - r.get_number_of_sign_changes(-p.a);
+	p.positive = -r.get_number_of_sign_changes(p.b) + r.get_number_of_sign_changes(p.a);
+}
+
+//should return an array of intervals with one root only?
+
+
+auto localizer_negative(Polynomial& p) {
+	//nuber : poly_.negative
+	//-p.b <> -p.a 
+	// делим пополам и смотрим что получилось?
+
+	
+
+
+	Row r = Row(p);
+
+	double lower = -p.b;
+	double current = (-p.b - p.a) / 2;
+	double upper = -p.a;
+
+	int n_initial = r.get_number_of_sign_changes(-p.b);
+
+	if (p.negative == 1) {
+		p.intervals.push_back(std::vector<double>{lower, upper});
+		return;
 	}
+	
+
+	for (int i = 0; i < p.negative; i++) {
+		while (r.get_number_of_sign_changes(current) != n_initial - 1) {
+			current = (current - lower) / 2;
+		}
+
+		p.intervals.push_back(std::vector<double>{lower, current});
+		lower = current;
+		current = (upper - lower) / 2;
+		n_initial--;
+	}
+
+
+	
+
+	return;
+};
+
+
+auto localizer_positive(Polynomial& p) {
+	
+	
+
+
+	Row r = Row(p);
+
+	double lower = p.a;
+	double current = (p.b + p.a) / 2;
+	double upper = p.b;
+
+	int n_initial = r.get_number_of_sign_changes(p.a);
+
+	
+	if (p.positive == 1) {
+		p.intervals.push_back(std::vector<double>{lower, upper});
+		return;
+	}
+
+	for (int i = 0; i < p.positive; i++) {
+		while (r.get_number_of_sign_changes(current) != n_initial - 1) {
+			current = (current - lower) / 2;
+		}
+
+		p.intervals.push_back(std::vector<double>{lower, current});
+		lower = current;
+		current = (upper - lower) / 2;
+		n_initial--;
+	}
+
+
+	for (int i = 0; i < p.intervals.size(); i++) {
+		std::cout << p.intervals[i][0] << ";" << p.intervals[i][1] << "\n";
+	}
+
+	return;
 };
 
 
@@ -194,13 +282,14 @@ public:
 int main() {
 
 
-	std::cout << "6! = " << factorial(6) << std::endl;
-	std::cout << "2^3 = " << power(2, 3) << std::endl;
+	/*std::cout << "6! = " << factorial(6) << std::endl;
+	std::cout << "2^3 = " << power(2, 3) << std::endl;*/
 
 
 	std::vector<double> array_1 =  { 8.7 , 5.7, -2.8, 6.5, 6, -2.8, -0.4 };
 	std::vector<double> array_2 = { 6, 5, 4, 3, 2, 1, 0 };
 	std::vector<double> array_3 = { 1, 1, 1, 1, 1, 7, 0};
+	std::vector<double> array_4 = { 1, 0, 0, 0, 0, 0, 1};
 	std::vector<double> array_test = { 0.2, -1, -1, 3, -1, 5 };
 	
 
@@ -209,40 +298,33 @@ int main() {
 	p.print();
 	std::cout << "lower bound " << p.a << " upper bound " << p.b << std::endl;
 	
-	Row r = Row(p);//this is a row from Budan-Fourier theorem
+	get_number_of_roots(p);
 
-	int negative = r.get_number(-p.b) - r.get_number(-p.a);
-	int positive = -r.get_number(p.b) + r.get_number(p.a);
+	std::cout << p.negative << " negative roots, " << p.positive << "positve roots " << std::endl;
 
 	
-	
-	std::cout << "---- shit ----" << std::endl;
-		for (int i = -100; i < 100; i+=5) {
-
-			if (i == 0) {
-				std::cout << "!!!!!!";
-			}
-
-			std::cout << r.get_number(double(i)/100) << " ";
-		}
-	std::cout << std::endl << "---- shit ----" << std::endl;
-	
-	
-	
-	std::cout << r.get_number(-p.b) << " " << r.get_number(-p.a) << " " << r.get_number(p.a) << " " <<  r.get_number(p.b) << std::endl;
-	/*std::cout << r.get_number(-2.5) << " " << r.get_number(-0.625) << " " << r.get_number(1.5) << " " <<  r.get_number(2) << 
-		" "<< r.get_number(5.4) << " " << r.get_number(5.5) << std::endl;*/
-	std::cout << negative << " negative roots, " << positive << "positve roots " << std::endl;
-
 	//localizing roots
 	// we know the\at we have "negative" roots on (-a -b) and "positive" roots on (a b)
 	// now we have to separate thems
 
+	localizer_negative(p);
+	localizer_positive(p);
+	//this shit is done
+	//now for precision
+
+
+	/*std::cout << "---- shit ----" << std::endl;
+	for (int i = -100; i < 100; i += 5) {
+
+		if (i == 0) {
+			std::cout << "!!!!!!";
+		}
+
+		std::cout << r.get_number_of_sign_changes(double(i) / 100) << " ";
+	}
+	std::cout << std::endl << "---- shit ----" << std::endl;*/
 
 	
-
-
-
 }
 
 
