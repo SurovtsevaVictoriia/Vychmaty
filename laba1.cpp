@@ -2,11 +2,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <cmath>
+
+class Row;
+class Polynomial;
 
 int N0 = 6;
 
 //---------------------functions----------------------------
 int factorial(int n) {
+
+	switch (n)
+	{
+	case 1:
+		return 1; 
+		break;
+	case 2:
+		return 2;
+		break;
+	case 3:
+		return 6;
+		break;
+	case 4:
+		return 24;
+		break;
+	case 5:
+		return 120;
+		break;
+	case 6:
+		return 720;
+		break;
+
+	}
+
+
 	int a = 1;
 	for (int i = 1; i <= n; i++) {
 		a = a * i;
@@ -35,12 +64,35 @@ int sign(double x) {
 //--------------------------------------------
 
 
+auto get_derivative(std::vector<double> coef_, int n) {//derivarive from array
+
+	int size = coef_.size() - n;
+	std::vector<double> array_(size);
+
+	for (int i = 0; i < size; i++) {
+		array_[i] = coef_[i] * double(factorial(coef_.size() - 1 - i)) / double(factorial(coef_.size() - 1 - i - n));
+	}
+
+
+	return array_;
+}
+
+double get_value(std::vector<double> coef_, double x) {//from array
+	double value = 0;
+	for (int i = 0; i < coef_.size(); i++) {
+		value += power(x, coef_.size() - 1 - i) * coef_[i];
+	}
+	return value;
+}
+
+//------------------------------------------------
 
 class Polynomial {
 
 public:
 
 	std::vector<double> coef;///coefs
+	std::vector<std::vector<double>> derivatives;
 
 	int N;//power of polynome (6)
 
@@ -59,6 +111,11 @@ public:
 
 	Polynomial(std::vector<double> coef_ ) {
 		
+		for (int i = 0; i < coef_.size(); i++) {
+			derivatives.push_back(get_derivative(coef_, i));
+		}
+		
+
 		N = coef_.size() - 1;
 		for (int i = 0; i < N + 1; i++) {
 			coef.push_back(coef_[i]);
@@ -68,15 +125,6 @@ public:
 		this->get_a_b();
 		//is->get_number_of_roots();
 		//std::cout << "---------- polynomial constructed -------------" << std::endl;
-	}
-
-	//returns the value of polynomial at given x
-	double get_value(double x) {
-		double value = 0;
-		for (int i = 0; i < N + 1; i++) {
-			value += power(x, N - i) * coef[i];
-		}
-		return value;
 	}
 
 	//prints the polynomial
@@ -119,101 +167,49 @@ public:
 		b = 1 + A / abs(coef[0]);
 	}
 
-	
-};
-
-auto get_derivative(Polynomial& poly, int n) {//returns Polynomial which is a derivativ of n order
-
-	std::vector<double> array_(poly.N + 1 - n);
-
-	for (int i = 0; i < poly.N + 1 - n; i++) {
-
-		array_[i] = poly.coef[i] * double(factorial(poly.N - i)) / double(factorial(poly.N - i - n));
-	}
-
-	Polynomial deriv = Polynomial(array_);
-	return  deriv;
-
-}
-
-class Row {//Budan - Fourier
-	// хранит N полиномов и выдвет их значения по изначальному полиному
-
-public:
-
-	Polynomial* poly;
-
-	std::vector< Polynomial > functions;
-	
-	int N;
-	
-	Row(Polynomial& poly_) {
-
-		poly = &poly_;
-		N = poly->N  + 1;
-		for (int i = 0; i < poly->N +1; i++) {
-
-			functions.push_back(get_derivative(*poly, i));
-			//std::cout << i << std::endl;
-			//functions[i].print();
-			
-		}
-
-	}
-
 	int get_number_of_sign_changes(double x) {//return number of sign changes for given x
 
 		int n = 0;
 		std::vector<double> values;
 
 		std::cout << "\n" << x << " values:";
-		for (int i = 0; i < N ; i++) {
+		for (int i = 0; i < N + 1; i++) {
 
-			values.push_back(functions[i].get_value(x));			
-			std::cout <<i <<  ": " << values[i] << "       ";
+			values.push_back(get_value(derivatives[i], x));
+			std::cout << i << ": " << values[i] << "       ";
 		}
 
 		std::cout << std::endl;
 
-		for (int i = 1; i < N; i++) {
-			if (sign(values[i] )* sign(values[i - 1] )< 0) {
+		for (int i = 1; i < N + 1; i++) {
+			if (sign(values[i]) * sign(values[i - 1]) < 0) {
 				n++;
 			}
 		}
 
 		return n;
 	}
-
+	
 };
-
 
 
 //passes to polynomial a number of positive and negative roots it has
 void get_number_of_roots(Polynomial & p){
 
-	Row r = Row(p);
-	p.negative = r.get_number_of_sign_changes(-p.b) - r.get_number_of_sign_changes(-p.a);
-	p.positive = -r.get_number_of_sign_changes(p.b) + r.get_number_of_sign_changes(p.a);
+	
+	p.negative = p.get_number_of_sign_changes(-p.b) - p.get_number_of_sign_changes(-p.a);
+	p.positive = -p.get_number_of_sign_changes(p.b) + p.get_number_of_sign_changes(p.a);
 }
 
 //should return an array of intervals with one root only?
 
-
 auto localizer_negative(Polynomial& p) {
-	//nuber : poly_.negative
-	//-p.b <> -p.a 
-	// делим пополам и смотрим что получилось?
-
 	
-
-
-	Row r = Row(p);
-
 	double lower = -p.b;
 	double current = (-p.b - p.a) / 2;
 	double upper = -p.a;
 
-	int n_initial = r.get_number_of_sign_changes(-p.b);
+	int n_initial = p.get_number_of_sign_changes(-p.b);
 
 	if (p.negative == 1) {
 		p.intervals.push_back(std::vector<double>{lower, upper});
@@ -222,7 +218,7 @@ auto localizer_negative(Polynomial& p) {
 	
 
 	for (int i = 0; i < p.negative; i++) {
-		while (r.get_number_of_sign_changes(current) != n_initial - 1) {
+		while (p.get_number_of_sign_changes(current) != n_initial - 1) {
 			current = (current - lower) / 2;
 		}
 
@@ -231,26 +227,17 @@ auto localizer_negative(Polynomial& p) {
 		current = (upper - lower) / 2;
 		n_initial--;
 	}
-
-
 	
-
 	return;
 };
 
-
 auto localizer_positive(Polynomial& p) {
 	
-	
-
-
-	Row r = Row(p);
-
 	double lower = p.a;
 	double current = (p.b + p.a) / 2;
 	double upper = p.b;
 
-	int n_initial = r.get_number_of_sign_changes(p.a);
+	int n_initial = p.get_number_of_sign_changes(p.a);
 
 	
 	if (p.positive == 1) {
@@ -259,7 +246,7 @@ auto localizer_positive(Polynomial& p) {
 	}
 
 	for (int i = 0; i < p.positive; i++) {
-		while (r.get_number_of_sign_changes(current) != n_initial - 1) {
+		while (p.get_number_of_sign_changes(current) != n_initial - 1) {
 			current = (current - lower) / 2;
 		}
 
@@ -278,9 +265,30 @@ auto localizer_positive(Polynomial& p) {
 };
 
 
+class Newton {
+	
+	// 
+
+	//newton method itself
+	auto solve(Polynomial p, double a, double b, double e) {
+		
+		
+
+		double x0;//x n-1
+		double x1;//x n
+		double x2;//x n + 1
+
+		while (abs(x2 - x1) > e) {
+			x2 = x1;/////
+			x0 = x1;
+			x1 = x2;
+		}
+
+		return x2;
+	}
+};
 
 int main() {
-
 
 	/*std::cout << "6! = " << factorial(6) << std::endl;
 	std::cout << "2^3 = " << power(2, 3) << std::endl;*/
@@ -291,9 +299,12 @@ int main() {
 	std::vector<double> array_3 = { 1, 1, 1, 1, 1, 7, 0};
 	std::vector<double> array_4 = { 1, 0, 0, 0, 0, 0, 1};
 	std::vector<double> array_test = { 0.2, -1, -1, 3, -1, 5 };
+
+
+	std::vector<double> array_my = { 0.0600438, -36.2684, 125.554, 48.7877, 5.81322, 0.0952521, -0.00619868};
 	
 
-	Polynomial p = Polynomial(array_test);//constructed polynomial with given coefs
+	Polynomial p = Polynomial(array_my);//constructed polynomial with given coefs
 
 	p.print();
 	std::cout << "lower bound " << p.a << " upper bound " << p.b << std::endl;
@@ -307,7 +318,9 @@ int main() {
 	// we know the\at we have "negative" roots on (-a -b) and "positive" roots on (a b)
 	// now we have to separate thems
 
-	localizer_negative(p);
+	//localizer_negative(p);
+
+
 	localizer_positive(p);
 	//this shit is done
 	//now for precision
@@ -324,7 +337,6 @@ int main() {
 	}
 	std::cout << std::endl << "---- shit ----" << std::endl;*/
 
-	
 }
 
 
