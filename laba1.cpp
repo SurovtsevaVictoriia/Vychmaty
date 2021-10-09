@@ -4,11 +4,6 @@
 #include <vector>
 #include <cmath>
 
-class Row;
-class Polynomial;
-
-int N0 = 6;
-
 //---------------------functions----------------------------
 int factorial(int n) {
 
@@ -95,10 +90,7 @@ public:
 	std::vector<std::vector<double>> derivatives;
 
 	int N;//power of polynome (6)
-
-	double B;//max 0 - n-1
-	double A;//max 1 - n
-
+	
 	double a;//lower bound
 	double b;//upper bound
 
@@ -106,6 +98,7 @@ public:
 	int positive;//number of positive roots
 
 	std::vector<std::vector<double>> intervals;
+	std::vector<double> roots;
 
 public:
 
@@ -121,7 +114,6 @@ public:
 			coef.push_back(coef_[i]);
 		}
 
-		this->get_A_B();
 		this->get_a_b();
 		//is->get_number_of_roots();
 		//std::cout << "---------- polynomial constructed -------------" << std::endl;
@@ -136,11 +128,15 @@ public:
 		}
 
 		std::cout << 0 << std::endl;
-		//--------
-	
 	}
-		
-	void get_A_B() {//some max values of coefs
+
+
+	void get_a_b() {// upper and lower bound od root circle
+
+
+		double B;//max 0 - n-1
+		double A;//max 1 - n
+
 
 		B = coef[0];
 		if (coef.size() > 1) {
@@ -160,9 +156,8 @@ public:
 			}
 
 		}
-	}
 
-	void get_a_b() {// upper and lower bound od root circle
+
 		a = abs(coef[N]) / (abs(coef[N]) + B);
 		b = 1 + A / abs(coef[0]);
 	}
@@ -172,14 +167,14 @@ public:
 		int n = 0;
 		std::vector<double> values;
 
-		std::cout << "\n" << x << " values:";
+		//std::cout << "\n" << x << " values:";
 		for (int i = 0; i < N + 1; i++) {
 
 			values.push_back(get_value(derivatives[i], x));
-			std::cout << i << ": " << values[i] << "       ";
+			//std::cout << i << ": " << values[i] << "       ";
 		}
 
-		std::cout << std::endl;
+		//std::cout << std::endl;
 
 		for (int i = 1; i < N + 1; i++) {
 			if (sign(values[i]) * sign(values[i - 1]) < 0) {
@@ -231,15 +226,16 @@ auto localizer_negative(Polynomial& p) {
 	return;
 };
 
-auto localizer_positive(Polynomial& p) {
+auto localizer_positive(Polynomial& p) {///rewrite!!!
 	
+
 	double lower = p.a;
 	double current = (p.b + p.a) / 2;
 	double upper = p.b;
 
 	int n_initial = p.get_number_of_sign_changes(p.a);
 
-	
+
 	if (p.positive == 1) {
 		p.intervals.push_back(std::vector<double>{lower, upper});
 		return;
@@ -265,35 +261,48 @@ auto localizer_positive(Polynomial& p) {
 };
 
 
-class Newton {
-	
-	// 
+//newton method itself
+auto solve(Polynomial& p, double e) {
 
-	//newton method itself
-	auto solve(Polynomial p, double a, double b, double e) {
-		
-		
+	double x1;//x n
+	double x2;//x n + 1
 
-		double x0;//x n-1
-		double x1;//x n
-		double x2;//x n + 1
+	for (int i = 0; i < p.positive; i++) {
 
-		while (abs(x2 - x1) > e) {
-			x2 = x1;/////
-			x0 = x1;
-			x1 = x2;
+		std::cout<< "sign changes: " << p.get_number_of_sign_changes(p.intervals[i][0]) << " " << p.get_number_of_sign_changes(p.intervals[i][1]) << "\n";
+
+		if (get_value(p.coef, p.intervals[i][0]) * get_value(p.derivatives[2], p.intervals[i][0]) > 0) {
+			x1 = p.intervals[i][0] + 2 * e;
+			x2 = p.intervals[i][0];
+
+		}
+		else if (get_value(p.coef, p.intervals[i][1]) * get_value(p.derivatives[2], p.intervals[i][1]) > 0) {
+			x1 = p.intervals[i][1] + 2 * e;
+			x2 = p.intervals[i][1];
+
+		}
+		else {
+			std::cout << "no suitable primary x \n";
+			return;
 		}
 
-		return x2;
+		
+		while (abs(x2 - x1) > e) {
+
+			x1 = x2;
+			x2 = x1 - get_value(p.coef, x1) / get_value(p.derivatives[1], x1);/////		
+
+		}
+
+		p.roots.push_back(x2);
+		std::cout << "root located: " << x2 << "\n";
 	}
-};
+}
+
 
 int main() {
 
-	/*std::cout << "6! = " << factorial(6) << std::endl;
-	std::cout << "2^3 = " << power(2, 3) << std::endl;*/
-
-
+	
 	std::vector<double> array_1 =  { 8.7 , 5.7, -2.8, 6.5, 6, -2.8, -0.4 };
 	std::vector<double> array_2 = { 6, 5, 4, 3, 2, 1, 0 };
 	std::vector<double> array_3 = { 1, 1, 1, 1, 1, 7, 0};
@@ -314,28 +323,10 @@ int main() {
 	std::cout << p.negative << " negative roots, " << p.positive << "positve roots " << std::endl;
 
 	
-	//localizing roots
-	// we know the\at we have "negative" roots on (-a -b) and "positive" roots on (a b)
-	// now we have to separate thems
-
-	//localizer_negative(p);
-
-
 	localizer_positive(p);
-	//this shit is done
-	//now for precision
+	
+	solve(p, 0.0005);
 
-
-	/*std::cout << "---- shit ----" << std::endl;
-	for (int i = -100; i < 100; i += 5) {
-
-		if (i == 0) {
-			std::cout << "!!!!!!";
-		}
-
-		std::cout << r.get_number_of_sign_changes(double(i) / 100) << " ";
-	}
-	std::cout << std::endl << "---- shit ----" << std::endl;*/
 
 }
 
