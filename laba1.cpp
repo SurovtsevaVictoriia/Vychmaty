@@ -3,39 +3,27 @@
 #include <stdlib.h>
 #include <vector>
 #include <cmath>
+#include <fstream>
+#include <locale>
 
-//---------------------functions----------------------------
-int factorial(int n) {
 
-	switch (n)
-	{
-	case 1:
-		return 1; 
-		break;
-	case 2:
-		return 2;
-		break;
-	case 3:
-		return 6;
-		break;
-	case 4:
-		return 24;
-		break;
-	case 5:
-		return 120;
-		break;
-	case 6:
-		return 720;
-		break;
+void print_as_poly(std::vector<double> vec) {
 
+	std::cout << "f(x) = ";
+	for (int i = 0; i < vec.size(); i++) {
+		std::cout << vec[i] << "x^" << vec.size() - 1 - i << " + ";
 	}
 
+	std::cout << 0 << std::endl;
+}
+void print(std::vector<double> vec) {
 
-	int a = 1;
-	for (int i = 1; i <= n; i++) {
-		a = a * i;
+	
+	for (int i = 0; i < vec.size(); i++) {
+		std::cout << vec[i] << " ";
 	}
-	return a;
+
+	std::cout << "\n" << std::endl;
 }
 
 double power(double x, int n) {
@@ -46,31 +34,6 @@ double power(double x, int n) {
 	return value;
 }
 
-int sign(double x) {
-	if (x > 0) {
-		return 1;
-	}
-	else if (x < 0) {
-		return -1;
-	}
-	else return 0;
-}
-
-//--------------------------------------------
-
-
-auto get_derivative(std::vector<double> coef_, int n) {//derivarive from array
-
-	int size = coef_.size() - n;
-	std::vector<double> array_(size);
-
-	for (int i = 0; i < size; i++) {
-		array_[i] = coef_[i] * double(factorial(coef_.size() - 1 - i)) / double(factorial(coef_.size() - 1 - i - n));
-	}
-
-
-	return array_;
-}
 
 double get_value(std::vector<double> coef_, double x) {//from array
 	double value = 0;
@@ -80,262 +43,178 @@ double get_value(std::vector<double> coef_, double x) {//from array
 	return value;
 }
 
-//------------------------------------------------
 
-class Polynomial {
-
+class Spline {
 public:
 
-	std::vector<double> coef;///coefs
-	std::vector<std::vector<double>> derivatives;
-
-	int N;//power of polynome (6)
+	int N;
+	std::vector<std::vector<double>> values;
+	Spline(std::vector<double> x_values_, std::vector<double> y_values_) {
+		
+		N = x_values_.size() - 1;
+		
+			values.push_back(x_values_);
+			values.push_back(y_values_);
 	
-	double a;//lower bound
-	double b;//upper bound
-
-	int negative;//number of negative roots
-	int positive;//number of positive roots
-
-	std::vector<std::vector<double>> intervals;
-	std::vector<double> roots;
-
-public:
-
-	Polynomial(std::vector<double> coef_ ) {
-		
-		for (int i = 0; i < coef_.size(); i++) {
-			derivatives.push_back(get_derivative(coef_, i));
-		}
-		
-
-		N = coef_.size() - 1;
-		for (int i = 0; i < N + 1; i++) {
-			coef.push_back(coef_[i]);
-		}
-
-		this->get_a_b();
-		//is->get_number_of_roots();
-		//std::cout << "---------- polynomial constructed -------------" << std::endl;
 	}
 
-	//prints the polynomial
-	void print() {
+	std::vector<double> new_poly;
+	std::vector<std::vector<double>> residue;//(x-x0)(x-x1)(x-x2)
+	std::vector<double> coefs;
+	std::vector<double> final_coefs;
+	void calculate_residue() {//works
 
-		std::cout << "f(x) = ";
-		for (int i = 0; i < N + 1; i++) {
-			std::cout << coef[i] << "x^" << N - i << " + ";
-		}
-
-		std::cout << 0 << std::endl;
-	}
-
-
-	void get_a_b() {// upper and lower bound od root circle
-
-
-		double B;//max 0 - n-1
-		double A;//max 1 - n
-
-
-		B = coef[0];
-		if (coef.size() > 1) {
-			A = coef[1];
-		}
-		else {
-			A = B;
-			return;
-		}
-
-		for (int i = 0; i < N; i++) {
-			if (coef[i] > B) {
-				B = coef[i];
-			}
-			if (coef[i + 1] > A) {
-				A = coef[i + 1];
-			}
-
-		}
-
-
-		a = abs(coef[N]) / (abs(coef[N]) + B);
-		b = 1 + A / abs(coef[0]);
-	}
-
-	int get_number_of_sign_changes(double x) {//return number of sign changes for given x
-
-		int n = 0;
-		std::vector<double> values;
-
-		//std::cout << "\n" << x << " values:";
-		for (int i = 0; i < N + 1; i++) {
-
-			values.push_back(get_value(derivatives[i], x));
-			//std::cout << i << ": " << values[i] << "       ";
-		}
-
-		//std::cout << std::endl;
+		residue.push_back(std::vector<double>{ 1, -values[0][0] });		
 
 		for (int i = 1; i < N + 1; i++) {
-			if (sign(values[i]) * sign(values[i - 1]) < 0) {
-				n++;
+
+			std::vector<double> buffer;
+
+			buffer.push_back(1);
+			for (int j = 0; j < residue[i - 1].size() - 1;j++) {
+				buffer.push_back(residue[i - 1][j] * (-values[0][i]) + residue[i - 1][j + 1]);
 			}
+			buffer.push_back(residue[i - 1].back() * (-values[0][i]));
+			residue.push_back(buffer);			
 		}
-
-		return n;
-	}
-	
-};
-
-
-//passes to polynomial a number of positive and negative roots it has
-void get_number_of_roots(Polynomial & p){
-	
-	std::cout << " numbers of sign changes\n " 
-		<< p.get_number_of_sign_changes(-p.b) << " " << p.get_number_of_sign_changes(-p.a) << " "
-		<< p.get_number_of_sign_changes(p.a) << " " << p.get_number_of_sign_changes(p.b) << "\n";
-	
-	p.negative = p.get_number_of_sign_changes(-p.b) - p.get_number_of_sign_changes(-p.a);
-	p.positive = -p.get_number_of_sign_changes(p.b) + p.get_number_of_sign_changes(p.a);
-}
-
-//should return an array of intervals with one root only?
-
-auto localizer_negative(Polynomial& p) {
-	
-	double lower = -p.b;
-	double current = (-p.b - p.a) / 2;
-	double upper = -p.a;
-
-	int n_initial = p.get_number_of_sign_changes(-p.b);
-
-	if (p.negative == 0) {
-		std::cout << "no negative roots \n";
-		return;
 	}
 
-	if (p.negative == 1) {
-		p.intervals.push_back(std::vector<double>{lower, upper});
-		return;
-	}
-	
 
-	for (int i = 0; i < p.negative; i++) {
-		while (p.get_number_of_sign_changes(current) != n_initial - 1) {
-			current = (current + lower) / 2;
+	void calculate_coefs() {//recurrent shit for b
+		for (int i = 0; i < N + 1; i++) {
+			coefs.push_back(ff(i, i));
 		}
-
-		p.intervals.push_back(std::vector<double>{lower, current});
-		lower = current;
-		current = (upper + lower) / 2;
-		n_initial--;
-	}
-	
-	return;
-};
-
-auto localizer_positive(Polynomial& p) {///rewrite!!!
-	
-
-	double lower = p.a;
-	double current = (p.b + p.a) / 2;
-	double upper = p.b;
-	
-	int n_initial = p.get_number_of_sign_changes(p.a);
-
-	if (p.positive == 0) {
-		std::cout << "no positive roots \n";
-		return;
 	}
 
-	if (p.positive == 1) {
-		p.intervals.push_back(std::vector<double>{lower, upper});
-		return;
-	}
-
-	for (int i = 0; i < p.positive; i++) {
-
-		while (p.get_number_of_sign_changes(current) != n_initial - 1) {	
-			current = (current + lower) / 2;
+	
+	//would be more effective if i would just calculate buffer vectors but idc
+	double ff(int i, int j) {
+		if (i == 0) { 
+			double a = values[1][0];
+			std::cout << " i = " << i << " j = " << j << "\t" << a << "\n";
+			return values[1][0]; 
 		}
-
-		p.intervals.push_back(std::vector<double>{lower, current});
-		lower = current;
-		current = (upper + lower) / 2;
-		n_initial--;	
-	}
-
-	
-
-	for (int i = 0; i < p.intervals.size(); i++) {
-		std::cout << p.intervals[i][0] << ";" << p.intervals[i][1] << "\n";
-	}
-
-	return;
-};
-
-
-//newton method itself
-auto solve(Polynomial& p, double e) {
-
-	double x1;//x n
-	double x2;//x n + 1
-
-	for (int i = 0; i < p.intervals.size(); i++) {
-
-		x1 = (p.intervals[i][0] + p.intervals[i][1])/2 + 2 * e;
-		x2 = (p.intervals[i][0] + p.intervals[i][1]) / 2;
-
-		
-		while (abs(x2 - x1) > e) {
-
-			x1 = x2;			
-			x2 = x1 - get_value(p.coef, x1) / get_value(p.derivatives[1], x1);/////		
-			
-
+		else if (i == 1) {
+			double a = (values[1][j] - values[1][j - 1]) / (values[0][j] - values[0][j - 1]);
+			std::cout <<" i = 1, j = " << j << "\t" << a << "\n";
+			return a;
 		}
-
-		p.roots.push_back(x2);
+		else {
+			double a = (ff(i - 1, j) - ff(i - 1, j - 1)) /( values[0][j] - values[0][j - i]);
+			std::cout << " i = " << i << " j = " << j << "\t" << a << "\n";
+			return a ;
+		}
 		
 	}
-}
+
+	void calculate_coefs_final() {//for 
+
+		for (int i = 0; i < N; i++) {//
+
+			double a = 0;
+			for (int j = 0; j <= i; j++) {
+
+				a += residue[N - j - 1][i - j] * coefs[N - j];
+								
+			}
+
+			final_coefs.push_back(a);
+		}
+
+		double a = 0;
+		for (int j = 0; j < N; j++) {
+
+			a += residue[N - j - 1][N - j] * coefs[N - j];
+
+		}
+		a += coefs[0];
+		final_coefs.push_back(a);
+	}
+};
 
 
-int mmain() {
+void get_dots(Spline s) {
 
+
+	using namespace std;
 	
-	std::vector<double> array_1 =  { 8.7 , 5.7, -2.8, 6.5, 6, -2.8, -0.4 };
-	std::vector<double> array_2 = { 6, 5, 4, 3, 2, 1, 0 };
-	std::vector<double> array_3 = { 1, 1, 1, 1, 1, 7, 0};
-	std::vector<double> array_4 = { 1, 0, 0, 0, 0, 0, 1};
+	cout << "placing dots";
 
+	string outFile = "out.csv";
+	string inFile = "in.csv";
 
-	std::vector<double> array_test = { 0.2, -1, -1, 3, -1, 5 };
-	std::vector<double> array_mini = { 1, -5, 6 };//2, 3
+	//ofstream out(outFile);
+	ofstream out;
 
-	std::vector<double> array_my = { 0.0600438, -36.2684, 125.554, 48.7877, 5.81322, 0.0952521, -0.00619868};
-	
+	//out.imbue(std::locale("German_germany"));
 
-	Polynomial p = Polynomial(array_my);//constructed polynomial with given coefs
-
-	p.print();
-	std::cout << "lower bound " << p.a << " upper bound " << p.b << std::endl;
-	
-	get_number_of_roots(p);
-
-	std::cout << p.negative << " negative roots, " << p.positive << "positve roots " << std::endl;
-
-	//localizer_negative(p);
-	localizer_positive(p);
-	
-	solve(p, 0.00005);
-
-	std::cout << "\n\n\n\n\ roots: \n";
-	for (int i = 0; i < p.roots.size(); i++) {
-		std::cout << "root located: " << p.roots[i] << "	f(x): " << get_value(p.derivatives[0],p.roots[i]) << "\n";
+	out.open(inFile);
+	if (!out.is_open()) {
+		cerr << "cannot /*not a comment*/ open outFile"; /*<< outFile << endl;
+		return EXIT_FAILURE;*/ int a = 0; //comment
 	}
 
-	return 0;
+	out << "x;y;\n";
+	for (int i = 0; i <= s.N; i++) {
+		out << s.values[0][i] << ";" << s.values[1][i] << ";" << "\n";
+	}
+	out.close();
+
+	out.open(outFile);
+
+	if (!out.is_open()) {
+		cerr << "cannot /*not a comment*/ open outFile"; /*<< outFile << endl;
+		return EXIT_FAILURE;*/ int a = 0; //comment
+	}
+
+	out << "xx;yy;\n";
+	double start = s.values[0][0] - 1;
+	double end = s.values[0][s.N] + 1;
+	double step = 0.005;
+
+	for (auto i = start; i <= (end / step); ++i) {
+		out << i * step << ";" << get_value(s.final_coefs, i * step) << ";" << "\n";
+		
+	}
+	out.close();
+
+	
 }
 
 
+void do_the_thing(std::vector<double> &x, std::vector<double>& y,  Spline & s) {
+	
+	//сначала делаем по всем, потом по трем соседним
+	s.calculate_residue();
+	s.calculate_coefs();
+
+	s.calculate_coefs_final();
+
+	print_as_poly(s.residue[2]);
+	print(s.coefs);
+	print_as_poly(s.final_coefs);
+
+	get_dots(s);
+}
+
+int main() {
+
+	std::vector<double> x_test = { 1, 2, 4 };
+	std::vector<double> y_test = { 1, 2, 3 };
+
+	std::vector<double> x_test2 = { 0, 1, 2, 3, 4 };
+	std::vector<double> y_test2 = { 1, 5, 33, 109, 257 };
+
+	std::vector<double> x_test3 = { 1, 2, 3, 4, 5};
+	std::vector<double> y_test3 = { 5, 3, 8, 2, 14 };
+	
+
+	std::vector<double> x = { 0.17453, 0.5236, 0.87267, 1.22173, 1.5708, 1.91986 };
+	std::vector<double> y = { 0.000038, 0.00052, 0.00254, 0.01013, 0.03636, 0.11699 };
+
+	Spline s = Spline(x, y);
+	do_the_thing(x, y, s);
+	
+	std::cout << "s";
+
+}
