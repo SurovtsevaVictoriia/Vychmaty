@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <vector>
 #include <cmath>
+#include <fstream>
+#include <locale>
+
 
 void print_as_poly(std::vector<double> vec) {
 
@@ -22,6 +25,24 @@ void print(std::vector<double> vec) {
 
 	std::cout << "\n" << std::endl;
 }
+
+double power(double x, int n) {
+	double value = 1;
+	for (int i = 0; i < n; i++) {
+		value *= x;
+	}
+	return value;
+}
+
+
+double get_value(std::vector<double> coef_, double x) {//from array
+	double value = 0;
+	for (int i = 0; i < coef_.size(); i++) {
+		value += power(x, coef_.size() - 1 - i) * coef_[i];
+	}
+	return value;
+}
+
 
 class Spline {
 public:
@@ -112,23 +133,57 @@ public:
 };
 
 
+void get_dots(Spline s) {
 
 
-
-
-int main() {
-
-	std::vector<double> x_test = { 1, 2, 4 };
-	std::vector<double> y_test = { 1, 2, 3 };
-
-	std::vector<double> x_test2 = { 0, 1, 2, 3, 4 };
-	std::vector<double> y_test2 = { 1, 5, 33, 109, 257 };
+	using namespace std;
 	
+	cout << "placing dots";
 
-	std::vector<double> x = { 0.17453, 0.5236, 0.87267, 1.22173, 1.5708, 1.91986 };
-	std::vector<double> y = { 0.000038, 0.00052, 0.00254, 0.01013, 0.03636, 0.11699 };
+	string outFile = "out.csv";
+	string inFile = "in.csv";
+
+	//ofstream out(outFile);
+	ofstream out;
+
+	//out.imbue(std::locale("German_germany"));
+
+	out.open(inFile);
+	if (!out.is_open()) {
+		cerr << "cannot /*not a comment*/ open outFile"; /*<< outFile << endl;
+		return EXIT_FAILURE;*/ int a = 0; //comment
+	}
+
+	out << "x;y;\n";
+	for (int i = 0; i <= s.N; i++) {
+		out << s.values[0][i] << ";" << s.values[1][i] << ";" << "\n";
+	}
+	out.close();
+
+	out.open(outFile);
+
+	if (!out.is_open()) {
+		cerr << "cannot /*not a comment*/ open outFile"; /*<< outFile << endl;
+		return EXIT_FAILURE;*/ int a = 0; //comment
+	}
+
+	out << "xx;yy;\n";
+	double start = s.values[0][0] - 1;
+	double end = s.values[0][s.N] + 1;
+	double step = 0.005;
+
+	for (auto i = start; i <= (end / step); ++i) {
+		out << i * step << ";" << get_value(s.final_coefs, i * step) << ";" << "\n";
+		
+	}
+	out.close();
+
 	
-	Spline s = Spline(x, y);
+}
+
+
+void do_the_thing(std::vector<double> &x, std::vector<double>& y,  Spline & s) {
+	
 	//сначала делаем по всем, потом по трем соседним
 	s.calculate_residue();
 	s.calculate_coefs();
@@ -138,6 +193,28 @@ int main() {
 	print_as_poly(s.residue[2]);
 	print(s.coefs);
 	print_as_poly(s.final_coefs);
+
+	get_dots(s);
+}
+
+int main() {
+
+	std::vector<double> x_test = { 1, 2, 4 };
+	std::vector<double> y_test = { 1, 2, 3 };
+
+	std::vector<double> x_test2 = { 0, 1, 2, 3, 4 };
+	std::vector<double> y_test2 = { 1, 5, 33, 109, 257 };
+
+	std::vector<double> x_test3 = { 1, 2, 3, 4, 5};
+	std::vector<double> y_test3 = { 5, 3, 8, 2, 14 };
+	
+
+	std::vector<double> x = { 0.17453, 0.5236, 0.87267, 1.22173, 1.5708, 1.91986 };
+	std::vector<double> y = { 0.000038, 0.00052, 0.00254, 0.01013, 0.03636, 0.11699 };
+
+	Spline s = Spline(x, y);
+	do_the_thing(x, y, s);
+	
 	std::cout << "s";
 
 }
