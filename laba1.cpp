@@ -190,7 +190,10 @@ public:
 
 //passes to polynomial a number of positive and negative roots it has
 void get_number_of_roots(Polynomial & p){
-
+	
+	std::cout << " numbers of sign changes\n " 
+		<< p.get_number_of_sign_changes(-p.b) << " " << p.get_number_of_sign_changes(-p.a) << " "
+		<< p.get_number_of_sign_changes(p.a) << " " << p.get_number_of_sign_changes(p.b) << "\n";
 	
 	p.negative = p.get_number_of_sign_changes(-p.b) - p.get_number_of_sign_changes(-p.a);
 	p.positive = -p.get_number_of_sign_changes(p.b) + p.get_number_of_sign_changes(p.a);
@@ -205,6 +208,11 @@ auto localizer_negative(Polynomial& p) {
 	double upper = -p.a;
 
 	int n_initial = p.get_number_of_sign_changes(-p.b);
+
+	if (p.negative == 0) {
+		std::cout << "no negative roots \n";
+		return;
+	}
 
 	if (p.negative == 1) {
 		p.intervals.push_back(std::vector<double>{lower, upper});
@@ -232,12 +240,13 @@ auto localizer_positive(Polynomial& p) {///rewrite!!!
 	double lower = p.a;
 	double current = (p.b + p.a) / 2;
 	double upper = p.b;
-	std::cout << "lower : " << lower << " upper: " << upper << "\n";
-
+	
 	int n_initial = p.get_number_of_sign_changes(p.a);
 
-	std::cout << "n_initial; " << n_initial << "\n";
-	
+	if (p.positive == 0) {
+		std::cout << "no positive roots \n";
+		return;
+	}
 
 	if (p.positive == 1) {
 		p.intervals.push_back(std::vector<double>{lower, upper});
@@ -246,18 +255,14 @@ auto localizer_positive(Polynomial& p) {///rewrite!!!
 
 	for (int i = 0; i < p.positive; i++) {
 
-		while (p.get_number_of_sign_changes(current) != n_initial - 1) {
-			std::cout << "in while : current =  " << current << "\n";
+		while (p.get_number_of_sign_changes(current) != n_initial - 1) {	
 			current = (current + lower) / 2;
-			
-
 		}
 
 		p.intervals.push_back(std::vector<double>{lower, current});
 		lower = current;
 		current = (upper + lower) / 2;
-		n_initial--;
-		std::cout << "after while " << i << "\n";
+		n_initial--;	
 	}
 
 	
@@ -276,27 +281,9 @@ auto solve(Polynomial& p, double e) {
 	double x1;//x n
 	double x2;//x n + 1
 
-	for (int i = 0; i < p.positive; i++) {
+	for (int i = 0; i < p.intervals.size(); i++) {
 
-		std::cout<< "sign changes: " << p.get_number_of_sign_changes(p.intervals[i][0]) << " " << p.get_number_of_sign_changes(p.intervals[i][1]) << "\n";
-
-		if (get_value(p.coef, p.intervals[i][0]) * get_value(p.derivatives[2], p.intervals[i][0]) > 0) {
-			x1 = p.intervals[i][0] + 2 * e;
-			x2 = p.intervals[i][0];
-
-		}
-		else if (get_value(p.coef, p.intervals[i][1]) * get_value(p.derivatives[2], p.intervals[i][1]) > 0) {
-			x1 = p.intervals[i][1] + 2 * e;
-			x2 = p.intervals[i][1];
-
-		}
-		else {
-			std::cout << "no suitable primary x \n";
-			return;
-			
-		}
-
-		x1 =( p.intervals[i][0] + p.intervals[i][1])/2 + 2 * e;
+		x1 = (p.intervals[i][0] + p.intervals[i][1])/2 + 2 * e;
 		x2 = (p.intervals[i][0] + p.intervals[i][1]) / 2;
 
 		
@@ -304,26 +291,27 @@ auto solve(Polynomial& p, double e) {
 
 			x1 = x2;			
 			x2 = x1 - get_value(p.coef, x1) / get_value(p.derivatives[1], x1);/////		
-			std::cout << "x1:  " << x1 <<"  x2:   " << x2 <<"\n";
+			
 
 		}
 
 		p.roots.push_back(x2);
-		std::cout << "root located: " << x2 << "	f(x): "<< get_value(p.derivatives[0], x2)<<"\n";
+		
 	}
 }
 
 
-int main() {
+int mmain() {
 
 	
 	std::vector<double> array_1 =  { 8.7 , 5.7, -2.8, 6.5, 6, -2.8, -0.4 };
 	std::vector<double> array_2 = { 6, 5, 4, 3, 2, 1, 0 };
 	std::vector<double> array_3 = { 1, 1, 1, 1, 1, 7, 0};
 	std::vector<double> array_4 = { 1, 0, 0, 0, 0, 0, 1};
+
+
 	std::vector<double> array_test = { 0.2, -1, -1, 3, -1, 5 };
 	std::vector<double> array_mini = { 1, -5, 6 };//2, 3
-
 
 	std::vector<double> array_my = { 0.0600438, -36.2684, 125.554, 48.7877, 5.81322, 0.0952521, -0.00619868};
 	
@@ -337,17 +325,17 @@ int main() {
 
 	std::cout << p.negative << " negative roots, " << p.positive << "positve roots " << std::endl;
 
-	
+	//localizer_negative(p);
 	localizer_positive(p);
 	
 	solve(p, 0.00005);
 
 	std::cout << "\n\n\n\n\ roots: \n";
-	for (int i = 0; i < p.positive; i++) {
+	for (int i = 0; i < p.roots.size(); i++) {
 		std::cout << "root located: " << p.roots[i] << "	f(x): " << get_value(p.derivatives[0],p.roots[i]) << "\n";
 	}
 
-
+	return 0;
 }
 
 
