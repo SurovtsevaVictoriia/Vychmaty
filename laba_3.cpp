@@ -34,7 +34,6 @@ double max_dif(std::vector<double> a, std::vector<double >b) {
 
 	return dif;
 
-
 }
 
 
@@ -47,19 +46,24 @@ public:
 	double y0;
 	double e;
 
+	int k; // порядок сходимости
+	int N; // количество точек
+
 	double f(double x, double y) {
 		return(-2 - 4 * x * y) / (x * x) - y * y;
 	}
 
 
-	Solver(double _a, double _b, double _y0, /*double(*_f)(double, double),*/ double _e) {
+	Solver(double _a, double _b, double _y0, double _e, int _k, int _N) {
 		a = _a;
 		b = _b;
 		y0 = _y0;
 		e = _e;		
+		k = _k;
+		N = _N;
 	}
 
-	class Grid_function {//contsins the grid dunction itself?
+	class Grid_function {//contains the grid dunction itself
 	public:
 
 		int L;
@@ -73,21 +77,19 @@ public:
 			h = (s.b - s.a) / L;
 			grid.push_back(x_axis_grid(s));
 			grid.push_back(y_axis_grid(s));
-
-
 		}		
 
 		//returns vector of x knots
 		std::vector<double> x_axis_grid(Solver & s) {
 
 			std::vector<double> buffer;
-			double h = (s.b - s.a) / L;
 			for (int i = 0; i <= L; i++) {
 				buffer.push_back(s.a + h * i);
 			}
 			return buffer;
 		}
 
+		//returns vector of y knots
 		std::vector<double> y_axis_grid( Solver & s) {
 
 			std::vector<double> buffer;
@@ -104,30 +106,14 @@ public:
 			return buffer;
 		};
 
-		double get_y(Solver & s, int i) {
-
-			if (i == 0) { return s.y0; }
-			else {
-				
-				double f1 = s.f(grid[0][i - 1], grid[1][i - 1]);
-				double f2 = s.f(grid[0][i - 1] + h, grid[1][i - 1] + h * f1);
-
-				return grid[1][i - 1] + h / 2 * (f1 + f2);
-			};	
-
-			
-		}
-
 	};
 
 
 
 
-	std::vector<std::vector<double >> result() {
+	std::vector<std::vector<double >> result() {		
 
-		
-
-		double L0 = 2; 
+		double L0 = N; 
 		Grid_function grid_2h;
 		Grid_function grid_h;
 
@@ -136,12 +122,15 @@ public:
 		std::vector<std::vector<double >> grid_h_to_2h ;
 
 		grid_h_to_2h = grid_2h.grid;
+
 		for (int i = 0; i < grid_2h.grid[0].size(); i++) {
+
 			grid_h_to_2h[1][i] += 10 * e;
+		
 		}
 
 
-		while (max_dif(grid_2h.grid[1], grid_h_to_2h[1]) > e ) {
+		while (max_dif(grid_2h.grid[1], grid_h_to_2h[1]) / (2 * k - 1)> e ) {
 
 			grid_h_to_2h.clear();
 			grid_2h = grid_h; //less dots
@@ -149,23 +138,46 @@ public:
 
 			std::vector<double> buffer_x;
 			std::vector<double> buffer_y;
+
 			for (int i = 0; i < grid_2h.grid[0].size(); ++i) {
 
 				buffer_x.push_back(grid_h.grid[0][i * 2]);
 				buffer_y.push_back(grid_h.grid[1][i * 2]);
 
 			}
+
 			grid_h_to_2h.push_back(buffer_x);
 			grid_h_to_2h.push_back(buffer_y);
 
 			L0 *= 2;
 		}
+
 		std::cout << "result acquired!\n";
 
 		return grid_h.grid;
-
 	}
 
+	std::vector<std::vector<double>> equidistant() {
+
+		std::vector<std::vector<double >> buffer;
+		std::vector<double > buffer_x;
+		std::vector<double> buffer_y;
+
+		
+		std::vector<std::vector<double >> res = this->result();
+		int n = res[0].size() - 1;
+
+		for (int i = 0; i <= N; i++) {
+			buffer_x.push_back(res[0][i * n / N]);
+			buffer_y.push_back(res[1][i * n / N]);
+		}
+
+		buffer.push_back(buffer_x);
+		buffer.push_back(buffer_y);
+
+		return buffer;
+
+	}
 };
 
 
@@ -195,17 +207,12 @@ void get_dots(std::vector<std::vector<double>> vec) {//works
 	out.close();
 }
 
+int main() {	
 
-
-
-
-int main() {
-
-
-	Solver s = Solver(1, 2, -1, 0.0001);
-
-	std::vector<std::vector<double>> final = s.result();
-  
+	
+	Solver s = Solver(1, 2, -1, 0.0001, 2, 12);
+	
+	std::vector<std::vector<double>> final = s.equidistant();
 	get_dots(final);
 	
 }
